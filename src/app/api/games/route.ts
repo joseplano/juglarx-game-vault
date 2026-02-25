@@ -26,6 +26,12 @@ export async function POST(request: NextRequest) {
 
   const gameSource = source === "CHATGPT" ? "CHATGPT" : "MANUAL";
 
+  // Validate release_date is a proper YYYY-MM-DD format, otherwise set to null
+  let validDate: string | null = null;
+  if (release_date && /^\d{4}-\d{2}-\d{2}$/.test(release_date)) {
+    validDate = release_date;
+  }
+
   const { data: game, error } = await supabase
     .from("games")
     .insert({
@@ -35,7 +41,7 @@ export async function POST(request: NextRequest) {
       platform,
       genre: genre ?? [],
       saga: saga || null,
-      release_date: release_date || null,
+      release_date: validDate,
       summary: summary || null,
       cover_url: cover_url || null,
     })
@@ -45,7 +51,7 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error("Create game error:", error);
     return NextResponse.json(
-      { error: "Failed to create game" },
+      { error: error.message || "Failed to create game" },
       { status: 500 }
     );
   }

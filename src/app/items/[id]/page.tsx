@@ -34,11 +34,24 @@ export default async function ItemPage({ params }: PageProps) {
     .eq("owner_id", user.id)
     .order("created_at", { ascending: true });
 
+  // Generate signed URLs for private bucket photos
+  const photosWithUrls = await Promise.all(
+    (photos ?? []).map(async (photo) => {
+      const { data } = await supabase.storage
+        .from("item-photos")
+        .createSignedUrl(photo.storage_path, 3600); // 1 hour
+      return {
+        ...photo,
+        public_url: data?.signedUrl ?? photo.public_url,
+      };
+    })
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="mx-auto max-w-lg px-4 py-4">
-        <ItemDetail item={item} photos={photos ?? []} />
+        <ItemDetail item={item} photos={photosWithUrls} />
       </main>
     </div>
   );

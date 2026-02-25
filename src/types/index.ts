@@ -69,6 +69,7 @@ export interface GameSearchResult {
   release_date: string | null;
   summary: string | null;
   region: string | null;
+  cover_url: string | null;
 }
 
 // --- Form types ---

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { identifyFromBarcode, isChatGPTConfigured } from "@/lib/chatgpt";
+import { identifyFromBarcode, isChatGPTConfigured, fetchGameCover } from "@/lib/chatgpt";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -28,9 +28,16 @@ export async function POST(request: NextRequest) {
   try {
     const results = await identifyFromBarcode(barcode);
 
+    const resultsWithCovers = await Promise.all(
+      results.map(async (r) => ({
+        ...r,
+        cover_url: await fetchGameCover(r.title),
+      }))
+    );
+
     return NextResponse.json({
       barcode,
-      results,
+      results: resultsWithCovers,
     });
   } catch (err) {
     console.error("Barcode identify error:", err);

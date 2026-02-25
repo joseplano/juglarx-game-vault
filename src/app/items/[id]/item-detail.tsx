@@ -351,6 +351,7 @@ export default function ItemDetail({
                 itemId={item.id}
                 kind={kind.value as PhotoKind}
                 label={kind.label}
+                multiple={kind.value === "OTHER"}
               />
             ))}
           </div>

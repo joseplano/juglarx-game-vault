@@ -41,9 +41,18 @@ export default function GameSearchResults({
           onClick={() => onSelect(result)}
           className="flex w-full items-start gap-3 rounded-lg border border-gray-200 p-3 text-left transition hover:border-vault-400 hover:bg-vault-50"
         >
-          <div className="flex h-20 w-14 flex-shrink-0 items-center justify-center rounded bg-gradient-to-br from-vault-100 to-vault-200 text-center text-[10px] font-bold leading-tight text-vault-700">
-            {result.platform}
-          </div>
+          {result.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={result.cover_url}
+              alt={result.title}
+              className="h-20 w-14 flex-shrink-0 rounded object-cover"
+            />
+          ) : (
+            <div className="flex h-20 w-14 flex-shrink-0 items-center justify-center rounded bg-gradient-to-br from-vault-100 to-vault-200 text-center text-[10px] font-bold leading-tight text-vault-700">
+              {result.platform}
+            </div>
+          )}
 
           <div className="min-w-0 flex-1">
             <p className="font-medium leading-tight">{result.title}</p>

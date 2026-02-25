@@ -57,10 +57,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Get public/signed URL
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("item-photos").getPublicUrl(storagePath);
+  // Get signed URL for private bucket
+  const { data: signedUrlData } = await supabase.storage
+    .from("item-photos")
+    .createSignedUrl(storagePath, 3600); // 1 hour
+
+  const photoUrl = signedUrlData?.signedUrl ?? null;
 
   // Save photo record
   const { data: photo, error } = await supabase
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
       item_id: itemId,
       kind,
       storage_path: storagePath,
-      public_url: publicUrl,
+      public_url: photoUrl,
     })
     .select()
     .single();

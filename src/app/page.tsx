@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchGameCover } from "@/lib/chatgpt";
 import Navbar from "@/components/Navbar";
 import CollectionList from "./collection-list";
 
@@ -16,6 +17,26 @@ export default async function HomePage() {
     .select("*, game:games(*)")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
+
+  // Fetch covers for games that don't have one yet
+  const gamesWithoutCover = (items ?? [])
+    .filter((item) => item.game && !item.game.cover_url)
+    .map((item) => item.game);
+
+  if (gamesWithoutCover.length > 0) {
+    await Promise.all(
+      gamesWithoutCover.map(async (game) => {
+        const cover_url = await fetchGameCover(game.title);
+        if (cover_url) {
+          await supabase
+            .from("games")
+            .update({ cover_url })
+            .eq("id", game.id);
+          game.cover_url = cover_url;
+        }
+      })
+    );
+  }
 
   // Platform stats
   const platformCounts: Record<string, number> = {};

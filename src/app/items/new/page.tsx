@@ -118,6 +118,7 @@ export default function NewItemPage() {
           saga: result.franchise || null,
           release_date: result.release_date || null,
           summary: result.summary || null,
+          cover_url: result.cover_url || null,
           source: "CHATGPT",
         }),
       });

@@ -226,6 +226,7 @@ export default function ItemForm({ game, barcode = "" }: ItemFormProps) {
                 itemId={itemId}
                 kind={kind.value as PhotoKind}
                 label={kind.label}
+                multiple={kind.value === "OTHER"}
               />
             ))}
           </div>

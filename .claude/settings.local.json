@@ -4,7 +4,10 @@
       "Bash(cd /d/juglarx/GameCollection && npm install 2>&1)",
       "Bash(tail:*)",
       "Bash(node:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(cd:*)",
+      "Bash(printf:*)",
+      "Bash(gh auth:*)"
     ]
   }
 }

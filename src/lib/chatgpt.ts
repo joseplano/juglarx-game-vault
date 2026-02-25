@@ -134,6 +134,32 @@ export async function searchByTitle(
   return parseResponse(response);
 }
 
+/**
+ * Fetch a game cover image from Wikipedia.
+ */
+export async function fetchGameCover(title: string): Promise<string | null> {
+  try {
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(title + " video game")}&srlimit=1&format=json`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    const pageTitle = searchData?.query?.search?.[0]?.title;
+    if (!pageTitle) return null;
+
+    const imageUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=pageimages&piprop=thumbnail&pithumbsize=300&format=json`;
+    const imageRes = await fetch(imageUrl);
+    const imageData = await imageRes.json();
+
+    const pages = imageData?.query?.pages;
+    if (!pages) return null;
+    const page = Object.values(pages)[0] as Record<string, unknown>;
+    const thumbnail = page?.thumbnail as Record<string, string> | undefined;
+    return thumbnail?.source ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // --- Internal ---
 
 interface RawGameResult {
@@ -166,6 +192,7 @@ function parseResponse(
         release_date: g.release_date ?? null,
         summary: g.summary ?? null,
         region: g.region ?? null,
+        cover_url: null,
       }));
   } catch (err) {
     console.error("Failed to parse ChatGPT response:", content, err);

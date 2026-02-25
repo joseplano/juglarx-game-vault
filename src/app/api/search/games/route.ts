@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { searchByTitle, isChatGPTConfigured } from "@/lib/chatgpt";
+import { searchByTitle, isChatGPTConfigured, fetchGameCover } from "@/lib/chatgpt";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -28,7 +28,15 @@ export async function GET(request: NextRequest) {
 
   try {
     const results = await searchByTitle(query.trim());
-    return NextResponse.json({ results });
+
+    const resultsWithCovers = await Promise.all(
+      results.map(async (r) => ({
+        ...r,
+        cover_url: await fetchGameCover(r.title),
+      }))
+    );
+
+    return NextResponse.json({ results: resultsWithCovers });
   } catch (err) {
     console.error("Game search error:", err);
     return NextResponse.json(

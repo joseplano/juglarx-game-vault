@@ -11,7 +11,6 @@ export default function PhotoCapture({
   onCapture,
   label = "Capture or select a photo",
 }: PhotoCaptureProps) {
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -28,6 +27,14 @@ export default function PhotoCapture({
     };
   }, []);
 
+  // Attach stream to video element when it becomes available
+  useEffect(() => {
+    if (liveCamera && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [liveCamera]);
+
   async function startLiveCamera() {
     setCameraError(null);
     try {
@@ -35,10 +42,6 @@ export default function PhotoCapture({
         video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 960 } },
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
       setLiveCamera(true);
     } catch {
       setCameraError("Could not access camera. Check permissions.");
@@ -86,7 +89,6 @@ export default function PhotoCapture({
 
   function clearPreview() {
     setPreview(null);
-    if (cameraInputRef.current) cameraInputRef.current.value = "";
     if (galleryInputRef.current) galleryInputRef.current.value = "";
   }
 
@@ -94,15 +96,7 @@ export default function PhotoCapture({
     <div className="space-y-3">
       <p className="text-sm text-gray-600">{label}</p>
 
-      {/* Hidden file inputs */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileChange}
-        className="hidden"
-      />
+      {/* Hidden file input for gallery */}
       <input
         ref={galleryInputRef}
         type="file"
@@ -165,10 +159,10 @@ export default function PhotoCapture({
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            {/* Native camera (works great on mobile) */}
+            {/* Live camera */}
             <button
               type="button"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={startLiveCamera}
               className="btn-primary flex flex-col items-center gap-1 py-3"
             >
               <svg
@@ -214,15 +208,6 @@ export default function PhotoCapture({
               <span className="text-xs">From Gallery</span>
             </button>
           </div>
-
-          {/* Live camera viewfinder (for desktop or advanced use) */}
-          <button
-            type="button"
-            onClick={startLiveCamera}
-            className="w-full rounded-lg border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500 hover:border-vault-400 hover:text-vault-600"
-          >
-            Or use live camera viewfinder
-          </button>
         </div>
       )}
     </div>

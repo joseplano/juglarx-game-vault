@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { identifyFromImage, isChatGPTConfigured } from "@/lib/chatgpt";
+import { identifyFromImage, isChatGPTConfigured, fetchGameCover } from "@/lib/chatgpt";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -35,7 +35,14 @@ export async function POST(request: NextRequest) {
 
     const results = await identifyFromImage(base64, mimeType);
 
-    return NextResponse.json({ results });
+    const resultsWithCovers = await Promise.all(
+      results.map(async (r) => ({
+        ...r,
+        cover_url: await fetchGameCover(r.title),
+      }))
+    );
+
+    return NextResponse.json({ results: resultsWithCovers });
   } catch (err) {
     console.error("Image identify error:", err);
     return NextResponse.json(
