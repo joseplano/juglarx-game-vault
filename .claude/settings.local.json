@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /d/juglarx/GameCollection && npm install 2>&1)",
+      "Bash(tail:*)",
+      "Bash(node:*)",
+      "Bash(head:*)"
+    ]
+  }
+}

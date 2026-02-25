@@ -1,0 +1,290 @@
+================================================================================
+  JuglarX Game Vault — Guia paso a paso: Deploy e instalacion en Android
+================================================================================
+
+REQUISITOS PREVIOS
+------------------
+- Node.js 18+ instalado
+- Cuenta en GitHub (gratis)
+- Cuenta en Vercel (gratis) — https://vercel.com
+- Proyecto Supabase creado y configurado (ver README.md secciones 1-3)
+- Credenciales Twitch/IGDB configuradas (ver README.md seccion 2)
+- Un telefono Android con Chrome actualizado
+
+
+================================================================================
+PASO 1: Crear iconos PNG para la PWA
+================================================================================
+
+La app necesita iconos reales en formato PNG para verse bien en Android.
+
+Opcion A — Generador online (mas facil):
+  1. Ve a https://realfavicongenerator.net/
+  2. Sube una imagen cuadrada (minimo 512x512 px)
+  3. Descarga el paquete generado
+  4. Copia los iconos a:
+     - public/icons/icon-192.png  (192x192 px)
+     - public/icons/icon-512.png  (512x512 px)
+
+Opcion B — Crear manualmente:
+  1. Usa Canva, Figma, Paint, o cualquier editor de imagenes
+  2. Crea un icono cuadrado de 512x512 px
+     - Fondo: #4263eb (azul vault)
+     - Texto: "GV" o "GAME VAULT" en blanco
+  3. Exporta como PNG
+  4. Guardalo como: public/icons/icon-512.png
+  5. Redimensiona a 192x192 px y guardalo como: public/icons/icon-192.png
+
+IMPORTANTE: Sin estos PNGs, Chrome no mostrara la opcion de instalar la app.
+
+
+================================================================================
+PASO 2: Verificar que el build funciona
+================================================================================
+
+Desde la carpeta del proyecto:
+
+  cd D:\juglarx\GameCollection
+  npm run build
+
+Debe terminar sin errores. Si hay errores, corregirlos antes de continuar.
+
+
+================================================================================
+PASO 3: Subir el codigo a GitHub
+================================================================================
+
+3.1 — Crear repositorio en GitHub:
+  1. Ve a https://github.com/new
+  2. Nombre: juglarx-game-vault
+  3. Dejalo privado si quieres (es tu coleccion personal)
+  4. NO marques "Initialize with README" (ya tenemos uno)
+  5. Click "Create repository"
+
+3.2 — Subir desde tu terminal:
+
+  cd D:\juglarx\GameCollection
+  git init
+  git add .
+  git commit -m "JuglarX Game Vault - initial release"
+  git branch -M main
+  git remote add origin https://github.com/TU_USUARIO/juglarx-game-vault.git
+  git push -u origin main
+
+Reemplaza TU_USUARIO con tu usuario de GitHub.
+
+
+================================================================================
+PASO 4: Deploy en Vercel
+================================================================================
+
+4.1 — Conectar repositorio:
+  1. Ve a https://vercel.com y logueate (puedes usar tu cuenta de GitHub)
+  2. Click "Add New" > "Project"
+  3. Selecciona tu repositorio "juglarx-game-vault"
+  4. Framework Preset: Next.js (se detecta automaticamente)
+
+4.2 — Configurar variables de entorno:
+  En la seccion "Environment Variables" agrega TODAS estas:
+
+  Nombre                          Valor
+  ----------------------------    -----------------------------------------
+  NEXT_PUBLIC_SUPABASE_URL        https://tu-proyecto.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY   tu-anon-key-de-supabase
+  SUPABASE_SERVICE_ROLE_KEY       tu-service-role-key-de-supabase
+  TWITCH_CLIENT_ID                tu-twitch-client-id
+  TWITCH_CLIENT_SECRET            tu-twitch-client-secret
+  MOBYGAMES_API_KEY               tu-mobygames-key (opcional, deja vacio si no tienes)
+
+  IMPORTANTE: Copia los valores exactos desde tu .env.local
+
+4.3 — Hacer deploy:
+  1. Click "Deploy"
+  2. Espera 1-2 minutos
+  3. Vercel te da una URL, por ejemplo:
+     https://juglarx-game-vault.vercel.app
+  4. Abre esa URL en tu navegador de PC para verificar que funciona
+  5. Hace login con your-email@example.com / your-secure-password
+
+
+================================================================================
+PASO 5: Configurar Supabase para aceptar la URL de Vercel
+================================================================================
+
+Esto es CRITICO. Si no lo haces, el login no va a funcionar desde la URL de Vercel.
+
+  1. Ve a Supabase Dashboard > tu proyecto
+  2. Authentication > URL Configuration
+  3. En "Site URL" pon tu URL de Vercel:
+     https://juglarx-game-vault.vercel.app
+  4. En "Redirect URLs" agrega:
+     https://juglarx-game-vault.vercel.app/**
+  5. Guarda los cambios
+
+
+================================================================================
+PASO 6: Instalar la PWA en tu telefono Android
+================================================================================
+
+6.1 — Abrir en Chrome:
+  1. Abre Chrome en tu telefono Android
+  2. Escribe la URL de Vercel en la barra de direcciones:
+     https://juglarx-game-vault.vercel.app
+  3. Espera a que cargue completamente
+
+6.2 — Hacer login:
+  1. Ingresa tu email: your-email@example.com
+  2. Ingresa tu password: your-secure-password
+  3. Verifica que entras a la pantalla principal de tu coleccion
+
+6.3 — Instalar como app:
+  Opcion A (banner automatico):
+    - Chrome puede mostrar un banner en la parte inferior que dice
+      "Add JuglarX Game Vault to Home screen"
+    - Toca "Add" o "Install"
+
+  Opcion B (menu manual):
+    1. Toca el menu de tres puntos (⋮) en la esquina superior derecha de Chrome
+    2. Busca "Install app" o "Add to Home screen"
+    3. Toca esa opcion
+    4. Confirma el nombre "Game Vault" y toca "Add" o "Install"
+
+6.4 — Verificar instalacion:
+  1. Ve a tu pantalla de inicio (Home)
+  2. Busca el icono "Game Vault"
+  3. Toca el icono para abrir la app
+  4. La app se abre SIN barra de Chrome, como una app nativa
+  5. Aparece en el app switcher como aplicacion independiente
+
+
+================================================================================
+PASO 7: Verificar funcionalidades en Android
+================================================================================
+
+7.1 — Camara y barcode:
+  1. Abre la app desde el icono del home
+  2. Toca "+ Add Item"
+  3. Toca "Scan Barcode"
+  4. Debe pedir permiso de camara — acepta
+  5. Apunta a un codigo de barras de un juego
+  6. Debe detectar el codigo y buscar el juego
+
+7.2 — Foto para identificar:
+  1. Toca "+ Add Item"
+  2. Toca "Photo Identify"
+  3. Toca "Open Camera" — abre la camara del telefono
+  4. Toma una foto de la caja o cartucho de un juego
+  5. Debe hacer OCR del texto y buscar en IGDB + MobyGames
+
+7.3 — Busqueda manual:
+  1. Toca "+ Add Item"
+  2. Toca "Manual Search"
+  3. Escribe el nombre de un juego
+  4. Debe mostrar resultados de IGDB y/o MobyGames
+
+7.4 — Subir fotos del item:
+  1. Despues de seleccionar un juego y guardar el item
+  2. Aparecen las opciones de foto: Box, Cartridge, Manual, Extras, Other
+  3. Toca "Add photo" en cualquiera
+  4. Elige entre camara o galeria
+  5. La foto debe subirse a Supabase Storage
+
+
+================================================================================
+PASO 8 (OPCIONAL): Probar localmente antes de deploy
+================================================================================
+
+Si quieres probar la PWA en Android SIN hacer deploy a Vercel,
+necesitas HTTPS. Usa ngrok:
+
+  8.1 — Instalar ngrok:
+    npm install -g ngrok
+
+  8.2 — Build de produccion (el service worker solo funciona en prod):
+    cd D:\juglarx\GameCollection
+    npm run build
+    npm start
+
+  8.3 — En otra terminal, exponer con HTTPS:
+    ngrok http 3000
+
+  8.4 — ngrok te da una URL tipo:
+    https://abc123.ngrok-free.app
+
+  8.5 — Abre esa URL en Chrome Android y sigue los pasos del PASO 6.
+
+  NOTA: Agrega la URL de ngrok en Supabase > Auth > Redirect URLs
+  para que el login funcione.
+
+
+================================================================================
+PASO 9 (OPCIONAL): Empaquetar como APK nativo con Bubblewrap (TWA)
+================================================================================
+
+Si quieres un APK real para instalar sin Chrome:
+
+  Requisitos:
+  - Java JDK 11+
+  - Android SDK (via Android Studio)
+
+  9.1 — Instalar Bubblewrap:
+    npm install -g @nicolo-ribaudo/bubblewrap
+
+  9.2 — Inicializar proyecto TWA:
+    bubblewrap init --manifest=https://tu-app.vercel.app/manifest.json
+
+  9.3 — Responder a los prompts:
+    - Package ID: com.juglarx.gamevault
+    - App name: Game Vault
+    - Launcher name: Game Vault
+    - Theme color: #4263eb
+    - Aceptar defaults para el resto
+
+  9.4 — Construir el APK:
+    bubblewrap build
+
+  9.5 — El APK se genera como: app-release-signed.apk
+
+  9.6 — Transferir al telefono:
+    - Por cable USB, email, Google Drive, o cualquier metodo
+    - En Android: Configuracion > Seguridad > activar "Instalar apps desconocidas"
+    - Abrir el archivo .apk e instalar
+
+  NOTA: Para produccion necesitas verificar la propiedad del dominio
+  con Digital Asset Links. Ver:
+  https://developer.chrome.com/docs/android/trusted-web-activity/
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+P: Chrome no muestra la opcion "Install app"
+R: Verifica que:
+   - Los iconos PNG existen en public/icons/ (192 y 512)
+   - manifest.json es valido (Chrome DevTools > Application > Manifest)
+   - La app esta en HTTPS
+   - El service worker esta registrado (solo en build de produccion)
+
+P: El login no funciona desde la URL de Vercel
+R: Revisa que agregaste la URL de Vercel en Supabase > Auth > URL Configuration
+   tanto en "Site URL" como en "Redirect URLs"
+
+P: La camara no funciona
+R: - Verifica permisos de Chrome: Configuracion > Sitios > Camara
+   - La camara requiere HTTPS (no funciona en HTTP plano)
+   - Prueba cerrar y reabrir la app
+
+P: Las fotos no se suben
+R: - Verifica que el bucket "item-photos" existe en Supabase > Storage
+   - Verifica que corriste la migracion SQL que crea las storage policies
+   - Revisa la consola del navegador para errores detallados
+
+P: La app no se actualiza despues de un nuevo deploy
+R: - Cierra la app completamente (desde el app switcher)
+   - Reabrela — el service worker deberia actualizarse automaticamente
+   - Si no: Chrome > Configuracion > Apps > Game Vault > Borrar datos
+
+================================================================================
+FIN — Listo! Tu coleccion de juegos en el bolsillo.
+================================================================================
