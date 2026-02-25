@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Item, Game, Photo, PhotoKind } from "@/types";
 import {
@@ -14,6 +14,42 @@ import { formatDate, getCompletenessDefaults } from "@/lib/utils";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploader from "@/components/PhotoUploader";
 import toast from "react-hot-toast";
+
+function rotateImageBlob(
+  imageUrl: string,
+  degrees: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas not supported"));
+
+      const rad = (degrees * Math.PI) / 180;
+      const sin = Math.abs(Math.sin(rad));
+      const cos = Math.abs(Math.cos(rad));
+      canvas.width = Math.round(img.width * cos + img.height * sin);
+      canvas.height = Math.round(img.width * sin + img.height * cos);
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rad);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Failed to create blob"));
+        },
+        "image/jpeg",
+        0.92
+      );
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = imageUrl;
+  });
+}
 
 interface ItemDetailProps {
   item: Item & { game: Game };
@@ -33,6 +69,7 @@ export default function ItemDetail({
   const [saving, setSaving] = useState(false);
   const [showAddPhoto, setShowAddPhoto] = useState(false);
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(initialCoverPhotoId);
+  const [rotating, setRotating] = useState(false);
 
   const game = item.game;
   const conditionColor =
@@ -130,6 +167,41 @@ export default function ItemDetail({
     }
   }
 
+  const handleRotateCover = useCallback(async (degrees: number) => {
+    if (!game.cover_url || rotating) return;
+    setRotating(true);
+    try {
+      const blob = await rotateImageBlob(game.cover_url, degrees);
+      const file = new File([blob], `cover-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      });
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("game_id", game.id);
+
+      const res = await fetch("/api/games/cover", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setItem((prev) => ({
+        ...prev,
+        game: { ...prev.game, cover_url: data.cover_url },
+      }));
+      toast.success("Cover rotated!");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to rotate cover"
+      );
+    } finally {
+      setRotating(false);
+    }
+  }, [game.cover_url, game.id, rotating]);
+
   return (
     <div className="space-y-5">
       {/* Back */}
@@ -142,18 +214,51 @@ export default function ItemDetail({
 
       {/* Game header */}
       <div className="flex gap-4">
-        {game.cover_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={game.cover_url}
-            alt={game.title}
-            className="h-32 w-24 flex-shrink-0 rounded-lg object-cover shadow"
-          />
-        ) : (
-          <div className="flex h-32 w-24 flex-shrink-0 items-center justify-center rounded-lg bg-gray-200 text-sm text-gray-400">
-            No img
-          </div>
-        )}
+        <div className="flex flex-shrink-0 flex-col items-center gap-1">
+          {game.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={game.cover_url}
+              alt={game.title}
+              className="h-32 w-24 rounded-lg object-cover shadow"
+            />
+          ) : (
+            <div className="flex h-32 w-24 items-center justify-center rounded-lg bg-gray-200 text-sm text-gray-400">
+              No img
+            </div>
+          )}
+          {game.cover_url && (
+            <div className="flex gap-1">
+              <button
+                onClick={() => handleRotateCover(-90)}
+                disabled={rotating}
+                className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-300 disabled:opacity-50"
+                title="Rotate 90° CCW"
+              >
+                CCW
+              </button>
+              <button
+                onClick={() => handleRotateCover(180)}
+                disabled={rotating}
+                className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-300 disabled:opacity-50"
+                title="Rotate 180°"
+              >
+                180°
+              </button>
+              <button
+                onClick={() => handleRotateCover(90)}
+                disabled={rotating}
+                className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-300 disabled:opacity-50"
+                title="Rotate 90° CW"
+              >
+                CW
+              </button>
+            </div>
+          )}
+          {rotating && (
+            <p className="text-[10px] text-vault-600">Rotating...</p>
+          )}
+        </div>
 
         <div className="space-y-1">
           <h1 className="text-lg font-bold leading-tight">{game.title}</h1>
