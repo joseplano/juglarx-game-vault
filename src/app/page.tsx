@@ -38,6 +38,19 @@ export default async function HomePage() {
     );
   }
 
+  // Resolve storage: cover URLs to signed URLs
+  await Promise.all(
+    (items ?? []).map(async (item) => {
+      if (item.game?.cover_url?.startsWith("storage:")) {
+        const path = item.game.cover_url.slice("storage:".length);
+        const { data } = await supabase.storage
+          .from("item-photos")
+          .createSignedUrl(path, 3600);
+        item.game.cover_url = data?.signedUrl ?? null;
+      }
+    })
+  );
+
   // Platform stats
   const platformCounts: Record<string, number> = {};
   for (const item of items ?? []) {

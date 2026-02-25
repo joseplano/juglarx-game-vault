@@ -34,6 +34,20 @@ export default async function ItemPage({ params }: PageProps) {
     .eq("owner_id", user.id)
     .order("created_at", { ascending: true });
 
+  // Resolve storage: cover URL to signed URL and find cover photo ID
+  let coverPhotoId: string | null = null;
+  if (item.game?.cover_url?.startsWith("storage:")) {
+    const path = item.game.cover_url.slice("storage:".length);
+    const { data } = await supabase.storage
+      .from("item-photos")
+      .createSignedUrl(path, 3600);
+    item.game.cover_url = data?.signedUrl ?? null;
+
+    // Find which photo matches this storage path
+    const match = (photos ?? []).find((p) => p.storage_path === path);
+    if (match) coverPhotoId = match.id;
+  }
+
   // Generate signed URLs for private bucket photos
   const photosWithUrls = await Promise.all(
     (photos ?? []).map(async (photo) => {
@@ -51,7 +65,7 @@ export default async function ItemPage({ params }: PageProps) {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="mx-auto max-w-lg px-4 py-4">
-        <ItemDetail item={item} photos={photosWithUrls} />
+        <ItemDetail item={item} photos={photosWithUrls} initialCoverPhotoId={coverPhotoId} />
       </main>
     </div>
   );

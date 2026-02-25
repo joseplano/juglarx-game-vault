@@ -18,11 +18,13 @@ import toast from "react-hot-toast";
 interface ItemDetailProps {
   item: Item & { game: Game };
   photos: Photo[];
+  initialCoverPhotoId?: string | null;
 }
 
 export default function ItemDetail({
   item: initialItem,
   photos: initialPhotos,
+  initialCoverPhotoId = null,
 }: ItemDetailProps) {
   const router = useRouter();
   const [item, setItem] = useState(initialItem);
@@ -30,6 +32,7 @@ export default function ItemDetail({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showAddPhoto, setShowAddPhoto] = useState(false);
+  const [coverPhotoId, setCoverPhotoId] = useState<string | null>(initialCoverPhotoId);
 
   const game = item.game;
   const conditionColor =
@@ -98,6 +101,33 @@ export default function ItemDetail({
 
   function handlePhotoDeleted(photoId: string) {
     setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+  }
+
+  async function handleSetCover(photoId: string) {
+    try {
+      const res = await fetch("/api/games", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          game_id: game.id,
+          photo_id: photoId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setItem((prev) => ({
+        ...prev,
+        game: { ...prev.game, cover_url: data.cover_url },
+      }));
+      setCoverPhotoId(photoId);
+      toast.success("Cover updated!");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to set cover"
+      );
+    }
   }
 
   return (
@@ -341,7 +371,12 @@ export default function ItemDetail({
           </button>
         </div>
 
-        <PhotoGallery photos={photos} onDelete={handlePhotoDeleted} />
+        <PhotoGallery
+          photos={photos}
+          onDelete={handlePhotoDeleted}
+          onSetCover={handleSetCover}
+          currentCoverPhotoId={coverPhotoId}
+        />
 
         {showAddPhoto && (
           <div className="space-y-2">
