@@ -7,7 +7,17 @@
       "Bash(head:*)",
       "Bash(cd:*)",
       "Bash(printf:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(cd /d/juglarx/GameCollection && git remote add origin https://joseplano@github.com/joseplano/juglarx-game-vault.git 2>&1)",
+      "Bash(cd /d/juglarx/GameCollection && git push --force origin main 2>&1)",
+      "WebSearch",
+      "WebFetch(domain:docs.github.com)",
+      "WebFetch(domain:neodyme.io)",
+      "Bash(read f:*)",
+      "WebFetch(domain:trufflesecurity.com)",
+      "WebFetch(domain:github.blog)",
+      "Bash(done)",
+      "Bash(curl:*)"
     ]
   }
 }
