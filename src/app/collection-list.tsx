@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import type { Item, Game } from "@/types";
 import ItemCard from "@/components/ItemCard";
-import Filters from "@/components/Filters";
+import Filters, { type FiltersState, EMPTY_FILTERS } from "@/components/Filters";
 import Pagination from "@/components/Pagination";
 
 const PAGE_SIZE = 12;
@@ -15,15 +15,7 @@ interface CollectionListProps {
 }
 
 export default function CollectionList({ initialItems }: CollectionListProps) {
-  const [filters, setFilters] = useState({
-    platform: "",
-    condition: "",
-    completeness: "",
-    region: "",
-    search: "",
-    saga: "",
-    genre: "",
-  });
+  const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
 
   // Derive unique sagas and genres from the collection
@@ -51,12 +43,12 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
         filters.search &&
         !item.game?.title?.toLowerCase().includes(filters.search.toLowerCase())
       ) return false;
-      if (filters.platform && item.game?.platform !== filters.platform) return false;
-      if (filters.condition && item.condition !== filters.condition) return false;
-      if (filters.completeness && item.completeness !== filters.completeness) return false;
-      if (filters.region && item.region !== filters.region) return false;
-      if (filters.saga && item.game?.saga !== filters.saga) return false;
-      if (filters.genre && !item.game?.genre?.includes(filters.genre)) return false;
+      if (filters.platform.length > 0 && !filters.platform.includes(item.game?.platform ?? "")) return false;
+      if (filters.condition.length > 0 && !filters.condition.includes(item.condition)) return false;
+      if (filters.completeness.length > 0 && !filters.completeness.includes(item.completeness)) return false;
+      if (filters.region.length > 0 && !filters.region.includes(item.region ?? "")) return false;
+      if (filters.saga.length > 0 && !filters.saga.includes(item.game?.saga ?? "")) return false;
+      if (filters.genre.length > 0 && !filters.genre.some((g) => item.game?.genre?.includes(g))) return false;
       return true;
     });
   }, [initialItems, filters]);

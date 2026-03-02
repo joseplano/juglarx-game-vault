@@ -1,37 +1,73 @@
 "use client";
 
 import { PLATFORMS, REGIONS, CONDITIONS, COMPLETENESS_OPTIONS } from "@/lib/constants";
+import MultiSelectFilter from "@/components/MultiSelectFilter";
+
+export interface FiltersState {
+  search: string;
+  platform: string[];
+  saga: string[];
+  genre: string[];
+  region: string[];
+  condition: string[];
+  completeness: string[];
+}
+
+export const EMPTY_FILTERS: FiltersState = {
+  search: "",
+  platform: [],
+  saga: [],
+  genre: [],
+  region: [],
+  condition: [],
+  completeness: [],
+};
 
 interface FiltersProps {
-  filters: {
-    platform: string;
-    condition: string;
-    completeness: string;
-    region: string;
-    search: string;
-    saga: string;
-    genre: string;
-  };
-  onChange: (filters: FiltersProps["filters"]) => void;
+  filters: FiltersState;
+  onChange: (filters: FiltersState) => void;
   sagas: string[];
   genres: string[];
 }
 
 export default function Filters({ filters, onChange, sagas, genres }: FiltersProps) {
-  function update(key: string, value: string) {
+  function update<K extends keyof FiltersState>(key: K, value: FiltersState[K]) {
     onChange({ ...filters, [key]: value });
   }
 
   const hasActiveFilters =
-    filters.platform ||
-    filters.region ||
-    filters.condition ||
-    filters.completeness ||
-    filters.saga ||
-    filters.genre;
+    filters.platform.length > 0 ||
+    filters.saga.length > 0 ||
+    filters.genre.length > 0 ||
+    filters.region.length > 0 ||
+    filters.condition.length > 0 ||
+    filters.completeness.length > 0;
+
+  // Selected chips (all active filters as removable tags)
+  const activeChips: { label: string; key: keyof FiltersState; value: string }[] = [
+    ...filters.platform.map((v) => ({ label: v, key: "platform" as const, value: v })),
+    ...filters.saga.map((v) => ({ label: v, key: "saga" as const, value: v })),
+    ...filters.genre.map((v) => ({ label: v, key: "genre" as const, value: v })),
+    ...filters.region.map((v) => ({ label: v, key: "region" as const, value: v })),
+    ...filters.condition.map((v) => ({
+      label: CONDITIONS.find((c) => c.value === v)?.label ?? v,
+      key: "condition" as const,
+      value: v,
+    })),
+    ...filters.completeness.map((v) => ({
+      label: COMPLETENESS_OPTIONS.find((c) => c.value === v)?.label ?? v,
+      key: "completeness" as const,
+      value: v,
+    })),
+  ];
+
+  function removeChip(key: keyof FiltersState, value: string) {
+    const current = filters[key] as string[];
+    onChange({ ...filters, [key]: current.filter((v) => v !== value) });
+  }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Search */}
       <input
         type="search"
@@ -41,97 +77,85 @@ export default function Filters({ filters, onChange, sagas, genres }: FiltersPro
         onChange={(e) => update("search", e.target.value)}
       />
 
-      {/* Filter dropdowns */}
+      {/* Multi-select dropdowns */}
       <div className="flex flex-wrap gap-2">
-        <select
-          className="input w-auto text-xs"
-          value={filters.platform}
-          onChange={(e) => update("platform", e.target.value)}
-        >
-          <option value="">All Platforms</option>
-          {PLATFORMS.map((p) => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Platform"
+          options={PLATFORMS.map((p) => ({ value: p, label: p }))}
+          selected={filters.platform}
+          onChange={(v) => update("platform", v)}
+        />
 
         {sagas.length > 0 && (
-          <select
-            className="input w-auto text-xs"
-            value={filters.saga}
-            onChange={(e) => update("saga", e.target.value)}
-          >
-            <option value="">All Sagas</option>
-            {sagas.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Saga"
+            options={sagas.map((s) => ({ value: s, label: s }))}
+            selected={filters.saga}
+            onChange={(v) => update("saga", v)}
+          />
         )}
 
         {genres.length > 0 && (
-          <select
-            className="input w-auto text-xs"
-            value={filters.genre}
-            onChange={(e) => update("genre", e.target.value)}
-          >
-            <option value="">All Genres</option>
-            {genres.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Genre"
+            options={genres.map((g) => ({ value: g, label: g }))}
+            selected={filters.genre}
+            onChange={(v) => update("genre", v)}
+          />
         )}
 
-        <select
-          className="input w-auto text-xs"
-          value={filters.region}
-          onChange={(e) => update("region", e.target.value)}
-        >
-          <option value="">All Regions</option>
-          {REGIONS.map((r) => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Region"
+          options={REGIONS.map((r) => ({ value: r, label: r }))}
+          selected={filters.region}
+          onChange={(v) => update("region", v)}
+        />
 
-        <select
-          className="input w-auto text-xs"
-          value={filters.condition}
-          onChange={(e) => update("condition", e.target.value)}
-        >
-          <option value="">All Conditions</option>
-          {CONDITIONS.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Condition"
+          options={CONDITIONS.map((c) => ({ value: c.value, label: c.label }))}
+          selected={filters.condition}
+          onChange={(v) => update("condition", v)}
+        />
 
-        <select
-          className="input w-auto text-xs"
-          value={filters.completeness}
-          onChange={(e) => update("completeness", e.target.value)}
-        >
-          <option value="">All Completeness</option>
-          {COMPLETENESS_OPTIONS.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Completeness"
+          options={COMPLETENESS_OPTIONS.map((c) => ({ value: c.value, label: c.label }))}
+          selected={filters.completeness}
+          onChange={(v) => update("completeness", v)}
+        />
 
         {hasActiveFilters && (
           <button
-            onClick={() =>
-              onChange({
-                search: filters.search,
-                platform: "",
-                condition: "",
-                completeness: "",
-                region: "",
-                saga: "",
-                genre: "",
-              })
-            }
-            className="text-xs text-vault-600 hover:underline"
+            onClick={() => onChange({ ...EMPTY_FILTERS, search: filters.search })}
+            className="text-xs text-vault-600 hover:underline self-center"
           >
-            Clear filters
+            Clear all
           </button>
         )}
       </div>
+
+      {/* Active filter chips */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {activeChips.map((chip) => (
+            <span
+              key={`${chip.key}-${chip.value}`}
+              className="flex items-center gap-1 rounded-full bg-vault-100 px-2 py-0.5 text-xs text-vault-700"
+            >
+              {chip.label}
+              <button
+                type="button"
+                onClick={() => removeChip(chip.key, chip.value)}
+                className="ml-0.5 text-vault-500 hover:text-vault-800 font-bold leading-none"
+                aria-label={`Remove ${chip.label}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
