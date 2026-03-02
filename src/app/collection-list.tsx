@@ -21,31 +21,42 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
     completeness: "",
     region: "",
     search: "",
+    saga: "",
+    genre: "",
   });
   const [page, setPage] = useState(1);
+
+  // Derive unique sagas and genres from the collection
+  const sagas = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of initialItems) {
+      if (item.game?.saga) set.add(item.game.saga);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [initialItems]);
+
+  const genres = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of initialItems) {
+      for (const g of item.game?.genre ?? []) {
+        if (g) set.add(g);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [initialItems]);
 
   const filtered = useMemo(() => {
     return initialItems.filter((item) => {
       if (
         filters.search &&
-        !item.game?.title
-          ?.toLowerCase()
-          .includes(filters.search.toLowerCase())
-      ) {
-        return false;
-      }
-      if (filters.platform && item.game?.platform !== filters.platform) {
-        return false;
-      }
-      if (filters.condition && item.condition !== filters.condition) {
-        return false;
-      }
-      if (filters.completeness && item.completeness !== filters.completeness) {
-        return false;
-      }
-      if (filters.region && item.region !== filters.region) {
-        return false;
-      }
+        !item.game?.title?.toLowerCase().includes(filters.search.toLowerCase())
+      ) return false;
+      if (filters.platform && item.game?.platform !== filters.platform) return false;
+      if (filters.condition && item.condition !== filters.condition) return false;
+      if (filters.completeness && item.completeness !== filters.completeness) return false;
+      if (filters.region && item.region !== filters.region) return false;
+      if (filters.saga && item.game?.saga !== filters.saga) return false;
+      if (filters.genre && !item.game?.genre?.includes(filters.genre)) return false;
       return true;
     });
   }, [initialItems, filters]);
@@ -62,13 +73,14 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
     safePage * PAGE_SIZE
   );
 
-  function handleFiltersChange(next: typeof filters) {
-    setFilters(next);
-  }
-
   return (
     <div className="space-y-4">
-      <Filters filters={filters} onChange={handleFiltersChange} />
+      <Filters
+        filters={filters}
+        onChange={setFilters}
+        sagas={sagas}
+        genres={genres}
+      />
 
       {filtered.length === 0 ? (
         <div className="py-12 text-center">
@@ -80,7 +92,6 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
         </div>
       ) : (
         <>
-          {/* Result count */}
           <p className="text-xs text-gray-400">
             {filtered.length === initialItems.length
               ? `${filtered.length} item${filtered.length !== 1 ? "s" : ""}`

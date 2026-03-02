@@ -9,14 +9,26 @@ interface FiltersProps {
     completeness: string;
     region: string;
     search: string;
+    saga: string;
+    genre: string;
   };
   onChange: (filters: FiltersProps["filters"]) => void;
+  sagas: string[];
+  genres: string[];
 }
 
-export default function Filters({ filters, onChange }: FiltersProps) {
+export default function Filters({ filters, onChange, sagas, genres }: FiltersProps) {
   function update(key: string, value: string) {
     onChange({ ...filters, [key]: value });
   }
+
+  const hasActiveFilters =
+    filters.platform ||
+    filters.region ||
+    filters.condition ||
+    filters.completeness ||
+    filters.saga ||
+    filters.genre;
 
   return (
     <div className="space-y-3">
@@ -38,11 +50,35 @@ export default function Filters({ filters, onChange }: FiltersProps) {
         >
           <option value="">All Platforms</option>
           {PLATFORMS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
+            <option key={p} value={p}>{p}</option>
           ))}
         </select>
+
+        {sagas.length > 0 && (
+          <select
+            className="input w-auto text-xs"
+            value={filters.saga}
+            onChange={(e) => update("saga", e.target.value)}
+          >
+            <option value="">All Sagas</option>
+            {sagas.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        )}
+
+        {genres.length > 0 && (
+          <select
+            className="input w-auto text-xs"
+            value={filters.genre}
+            onChange={(e) => update("genre", e.target.value)}
+          >
+            <option value="">All Genres</option>
+            {genres.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        )}
 
         <select
           className="input w-auto text-xs"
@@ -51,9 +87,7 @@ export default function Filters({ filters, onChange }: FiltersProps) {
         >
           <option value="">All Regions</option>
           {REGIONS.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
+            <option key={r} value={r}>{r}</option>
           ))}
         </select>
 
@@ -64,9 +98,7 @@ export default function Filters({ filters, onChange }: FiltersProps) {
         >
           <option value="">All Conditions</option>
           {CONDITIONS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
+            <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>
 
@@ -77,16 +109,11 @@ export default function Filters({ filters, onChange }: FiltersProps) {
         >
           <option value="">All Completeness</option>
           {COMPLETENESS_OPTIONS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
+            <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>
 
-        {(filters.platform ||
-          filters.region ||
-          filters.condition ||
-          filters.completeness) && (
+        {hasActiveFilters && (
           <button
             onClick={() =>
               onChange({
@@ -95,6 +122,8 @@ export default function Filters({ filters, onChange }: FiltersProps) {
                 condition: "",
                 completeness: "",
                 region: "",
+                saga: "",
+                genre: "",
               })
             }
             className="text-xs text-vault-600 hover:underline"
