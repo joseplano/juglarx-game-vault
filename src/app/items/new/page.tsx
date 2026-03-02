@@ -120,6 +120,8 @@ export default function NewItemPage() {
           summary: result.summary || null,
           cover_url: result.cover_url || null,
           source: "CHATGPT",
+          name_america: result.name_america ?? null,
+          name_europe: result.name_europe ?? null,
         }),
       });
 

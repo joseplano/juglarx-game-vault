@@ -21,7 +21,7 @@ export function isChatGPTConfigured(): boolean {
   return !!process.env.OPENAI_API_KEY;
 }
 
-const SYSTEM_PROMPT = `You are a video game identification expert with deep knowledge of retro and modern games across all platforms.
+const SYSTEM_PROMPT = `You are a video game identification expert with deep knowledge of retro and modern games across all platforms, including regional releases and alternate titles.
 
 When given an image, barcode, or title query, identify the game(s) and return structured information.
 
@@ -35,7 +35,9 @@ ALWAYS respond with valid JSON in this exact format:
       "franchise": "Franchise or saga name, or null if standalone",
       "release_date": "YYYY-MM-DD format, or null if unknown",
       "summary": "Brief 1-2 sentence description of the game",
-      "region": "NTSC-J or NTSC-U or PAL or PAL-M or Region Free, based on the image/context"
+      "region": "NTSC-J or NTSC-U or PAL or PAL-M or Region Free, based on the image/context",
+      "name_america": "The title used in North America if different from the main title, null if same or unknown, 'none' if never released in North America",
+      "name_europe": "The title used in Europe if different from the main title, null if same or unknown, 'none' if never released in Europe"
     }
   ]
 }
@@ -46,6 +48,7 @@ Rules:
 - For barcodes: use your knowledge of game UPC/EAN codes.
 - For text queries: return the most relevant games matching the title.
 - Platform should match common abbreviations: SNES, SFC, N64, NES, FC, Game Boy, GBA, GBC, NDS, Neo Geo, Neo Geo CD, Dreamcast, Saturn, Genesis, Mega Drive, Master System, PC, Amiga, MSX, Atari Jaguar.
+- For name_america and name_europe: provide the alternate regional title only when it is genuinely different (e.g. "Final Fantasy III" for FFVI in America). Use null when the name is the same or unknown, and "none" only when the game was definitively never released in that region.
 - If you cannot identify the game at all, return {"games": []}.
 - Never invent games that don't exist. Only return real, published games.`;
 
@@ -160,6 +163,53 @@ export async function fetchGameCover(title: string): Promise<string | null> {
   }
 }
 
+/**
+ * Fetch regional names (America / Europe) for a specific game title + platform.
+ */
+export async function fetchRegionalNames(
+  title: string,
+  platform: string
+): Promise<{ name_america: string | null; name_europe: string | null }> {
+  const openai = getClient();
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `You are a video game regional release expert. Answer in valid JSON only.`,
+      },
+      {
+        role: "user",
+        content: `For the video game "${title}" on ${platform}, what are the official titles used in North America and Europe?
+
+Return JSON in this exact format:
+{
+  "name_america": "Title used in North America, or null if same as the main title, or 'none' if not released there",
+  "name_europe": "Title used in Europe, or null if same as the main title, or 'none' if not released there"
+}
+
+Only return real, confirmed alternate titles. Use null when unsure or same. Use 'none' only if definitively not released in that region.`,
+      },
+    ],
+    max_tokens: 200,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) return { name_america: null, name_europe: null };
+
+  try {
+    const parsed = JSON.parse(content);
+    return {
+      name_america: parsed.name_america ?? null,
+      name_europe: parsed.name_europe ?? null,
+    };
+  } catch {
+    return { name_america: null, name_europe: null };
+  }
+}
+
 // --- Internal ---
 
 interface RawGameResult {
@@ -170,6 +220,8 @@ interface RawGameResult {
   release_date?: string | null;
   summary?: string | null;
   region?: string | null;
+  name_america?: string | null;
+  name_europe?: string | null;
 }
 
 function parseResponse(
@@ -193,6 +245,8 @@ function parseResponse(
         summary: g.summary ?? null,
         region: g.region ?? null,
         cover_url: null,
+        name_america: g.name_america ?? null,
+        name_europe: g.name_europe ?? null,
       }));
   } catch (err) {
     console.error("Failed to parse ChatGPT response:", content, err);

@@ -13,6 +13,7 @@ import {
 import { formatDate, getCompletenessDefaults } from "@/lib/utils";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploader from "@/components/PhotoUploader";
+import SagaInput from "@/components/SagaInput";
 import toast from "react-hot-toast";
 
 function rotateImageBlob(
@@ -70,6 +71,10 @@ export default function ItemDetail({
   const [showAddPhoto, setShowAddPhoto] = useState(false);
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(initialCoverPhotoId);
   const [rotating, setRotating] = useState(false);
+  const [editingGame, setEditingGame] = useState(false);
+  const [savingGame, setSavingGame] = useState(false);
+  const [gameSaga, setGameSaga] = useState(item.game.saga ?? "");
+  const [queryingRegional, setQueryingRegional] = useState(false);
 
   const game = item.game;
   const conditionColor =
@@ -105,6 +110,59 @@ export default function ItemDetail({
       toast.error(err instanceof Error ? err.message : "Failed to update");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleQueryRegionalNames() {
+    setQueryingRegional(true);
+    try {
+      const res = await fetch("/api/games/regional-names", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_id: game.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setItem((prev) => ({
+        ...prev,
+        game: {
+          ...prev.game,
+          name_america: data.game.name_america,
+          name_europe: data.game.name_europe,
+          regional_names_fetched: data.game.regional_names_fetched,
+          regional_query_count: data.game.regional_query_count,
+        },
+      }));
+      toast.success("Regional names updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to query regional names");
+    } finally {
+      setQueryingRegional(false);
+    }
+  }
+
+  async function handleSaveGame() {
+    setSavingGame(true);
+    try {
+      const res = await fetch(`/api/games/${game.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saga: gameSaga.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setItem((prev) => ({
+        ...prev,
+        game: { ...prev.game, saga: data.game.saga },
+      }));
+      setEditingGame(false);
+      toast.success("Game info updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update game");
+    } finally {
+      setSavingGame(false);
     }
   }
 
@@ -271,8 +329,46 @@ export default function ItemDetail({
           {game.genre.length > 0 && (
             <p className="text-xs text-gray-400">{game.genre.join(", ")}</p>
           )}
-          {game.saga && (
-            <p className="text-xs text-purple-500">Saga: {game.saga}</p>
+          {!editingGame ? (
+            <div className="flex items-center gap-2">
+              {game.saga ? (
+                <p className="text-xs text-purple-500">Saga: {game.saga}</p>
+              ) : (
+                <p className="text-xs text-gray-400">No saga</p>
+              )}
+              <button
+                onClick={() => {
+                  setGameSaga(game.saga ?? "");
+                  setEditingGame(true);
+                }}
+                className="text-[10px] text-vault-600 hover:underline"
+              >
+                Edit
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <SagaInput
+                  value={gameSaga}
+                  onChange={setGameSaga}
+                  placeholder="Saga / Franchise"
+                />
+              </div>
+              <button
+                onClick={handleSaveGame}
+                disabled={savingGame}
+                className="btn-primary text-xs px-2 py-1"
+              >
+                {savingGame ? "..." : "Save"}
+              </button>
+              <button
+                onClick={() => setEditingGame(false)}
+                className="btn-secondary text-xs px-2 py-1"
+              >
+                Cancel
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -282,6 +378,65 @@ export default function ItemDetail({
           {game.summary}
         </p>
       )}
+
+      {/* Regional names */}
+      <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs space-y-1">
+        {game.regional_names_fetched ? (
+          <>
+            <p className="font-medium text-gray-600">Nombres en otras regiones</p>
+            <p className="text-gray-500">
+              <span className="font-medium text-gray-600">América: </span>
+              {game.name_america === "none"
+                ? "No existe en América"
+                : game.name_america
+                ? game.name_america
+                : "Mismo nombre en América"}
+            </p>
+            <p className="text-gray-500">
+              <span className="font-medium text-gray-600">Europa: </span>
+              {game.name_europe === "none"
+                ? "No existe en Europa"
+                : game.name_europe
+                ? game.name_europe
+                : "Mismo nombre en Europa"}
+            </p>
+            {(game.regional_query_count ?? 0) > 0 && (
+              <p className="text-gray-400">
+                Consultado {game.regional_query_count} vez{game.regional_query_count !== 1 ? "es" : ""}
+              </p>
+            )}
+            <button
+              onClick={handleQueryRegionalNames}
+              disabled={queryingRegional}
+              className="mt-1 text-vault-600 hover:underline disabled:opacity-50"
+            >
+              {queryingRegional ? "Consultando..." : "Actualizar información regional"}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-gray-400">Sin información de nombres en otras regiones</p>
+            <button
+              onClick={handleQueryRegionalNames}
+              disabled={queryingRegional}
+              className="flex items-center gap-1 font-medium text-vault-600 hover:underline disabled:opacity-50"
+            >
+              {queryingRegional ? (
+                "Consultando..."
+              ) : (
+                <>
+                  Consultar información regional
+                  {(game.regional_query_count ?? 0) > 0 && (
+                    <span className="ml-1 rounded-full bg-vault-100 px-1.5 text-vault-700">
+                      {game.regional_query_count}
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Item details */}
       {!editing ? (

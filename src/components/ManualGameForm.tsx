@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PLATFORMS } from "@/lib/constants";
 import type { Game } from "@/types";
 import toast from "react-hot-toast";
+import SagaInput from "@/components/SagaInput";
 
 interface ManualGameFormProps {
   onCreated: (game: Game) => void;
@@ -99,11 +100,7 @@ export default function ManualGameForm({
 
       <div>
         <label className="label">Saga / Franchise</label>
-        <input
-          className="input"
-          value={saga}
-          onChange={(e) => setSaga(e.target.value)}
-        />
+        <SagaInput value={saga} onChange={setSaga} />
       </div>
 
       <div>

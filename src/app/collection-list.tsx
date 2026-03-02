@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Item, Game } from "@/types";
 import ItemCard from "@/components/ItemCard";
 import Filters from "@/components/Filters";
+import Pagination from "@/components/Pagination";
+
+const PAGE_SIZE = 12;
 
 type ItemWithGame = Item & { game: Game };
 
@@ -19,6 +22,7 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
     region: "",
     search: "",
   });
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     return initialItems.filter((item) => {
@@ -46,9 +50,25 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
     });
   }, [initialItems, filters]);
 
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
+
+  function handleFiltersChange(next: typeof filters) {
+    setFilters(next);
+  }
+
   return (
     <div className="space-y-4">
-      <Filters filters={filters} onChange={setFilters} />
+      <Filters filters={filters} onChange={handleFiltersChange} />
 
       {filtered.length === 0 ? (
         <div className="py-12 text-center">
@@ -59,11 +79,27 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((item) => (
-            <ItemCard key={item.id} item={item as ItemWithGame} />
-          ))}
-        </div>
+        <>
+          {/* Result count */}
+          <p className="text-xs text-gray-400">
+            {filtered.length === initialItems.length
+              ? `${filtered.length} item${filtered.length !== 1 ? "s" : ""}`
+              : `${filtered.length} of ${initialItems.length} items`}
+            {totalPages > 1 && ` · Page ${safePage} of ${totalPages}`}
+          </p>
+
+          <div className="space-y-2">
+            {paginated.map((item) => (
+              <ItemCard key={item.id} item={item as ItemWithGame} />
+            ))}
+          </div>
+
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </>
       )}
     </div>
   );

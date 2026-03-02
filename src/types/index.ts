@@ -30,6 +30,14 @@ export interface Game {
   summary: string | null;
   cover_url: string | null;
   created_at: string;
+  /** Name used in North America. null = same as title; 'none' = not released there. */
+  name_america: string | null;
+  /** Name used in Europe. null = same as title; 'none' = not released there. */
+  name_europe: string | null;
+  /** Whether regional name info has been fetched from ChatGPT. */
+  regional_names_fetched: boolean;
+  /** How many times the user has manually re-queried regional info. */
+  regional_query_count: number;
 }
 
 export interface Item {
@@ -70,6 +78,8 @@ export interface GameSearchResult {
   summary: string | null;
   region: string | null;
   cover_url: string | null;
+  name_america: string | null;
+  name_europe: string | null;
 }
 
 // --- Form types ---

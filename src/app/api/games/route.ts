@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { title, platform, genre, saga, release_date, summary, cover_url, source } =
+  const { title, platform, genre, saga, release_date, summary, cover_url, source, name_america, name_europe } =
     body;
 
   if (!title || !platform) {
@@ -32,6 +32,11 @@ export async function POST(request: NextRequest) {
     validDate = release_date;
   }
 
+  // Determine if regional name info was provided by ChatGPT
+  const hasRegionalInfo =
+    source === "CHATGPT" &&
+    (name_america !== undefined || name_europe !== undefined);
+
   const { data: game, error } = await supabase
     .from("games")
     .insert({
@@ -44,6 +49,10 @@ export async function POST(request: NextRequest) {
       release_date: validDate,
       summary: summary || null,
       cover_url: cover_url || null,
+      name_america: name_america ?? null,
+      name_europe: name_europe ?? null,
+      regional_names_fetched: hasRegionalInfo,
+      regional_query_count: 0,
     })
     .select()
     .single();
