@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
+import Webcam from "react-webcam";
 import type { PhotoKind } from "@/types";
 import toast from "react-hot-toast";
 
@@ -11,16 +12,28 @@ interface PhotoUploaderProps {
   multiple?: boolean;
 }
 
+interface CamControls {
+  hasZoom: boolean;
+  hasTorch: boolean;
+  minZoom: number;
+  maxZoom: number;
+  stepZoom: number;
+}
+
+type ExtConstraintSet = MediaTrackConstraintSet & { zoom?: number; torch?: boolean };
+type ExtCapabilities = MediaTrackCapabilities & {
+  zoom?: { min: number; max: number; step: number };
+  torch?: boolean;
+};
+
 export default function PhotoUploader({
   itemId,
   kind,
   label,
   multiple = false,
 }: PhotoUploaderProps) {
+  const webcamRef = useRef<Webcam>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
@@ -28,53 +41,76 @@ export default function PhotoUploader({
   const [liveCamera, setLiveCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
+  // Camera controls
+  const [controls, setControls] = useState<CamControls>({
+    hasZoom: false, hasTorch: false, minZoom: 1, maxZoom: 1, stepZoom: 0.1,
+  });
+  const [zoom, setZoom] = useState(1);
+  const [torchOn, setTorchOn] = useState(false);
+  const [brightness, setBrightness] = useState(1);
+
   const uploaded = !multiple && uploadedCount > 0;
 
-  // Clean up camera stream on unmount
-  useEffect(() => {
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
+  function handleUserMedia() {
+    const stream = webcamRef.current?.stream;
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+    const caps = track.getCapabilities() as ExtCapabilities;
+    setControls({
+      hasZoom: !!caps.zoom,
+      hasTorch: !!caps.torch,
+      minZoom: caps.zoom?.min ?? 1,
+      maxZoom: caps.zoom?.max ?? 1,
+      stepZoom: caps.zoom?.step ?? 0.1,
+    });
+  }
 
-  // Attach stream to video element when it becomes available
-  useEffect(() => {
-    if (liveCamera && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch(() => {});
-    }
-  }, [liveCamera]);
-
-  async function startCamera() {
-    setCameraError(null);
+  async function applyZoom(value: number) {
+    setZoom(value);
+    const track = webcamRef.current?.stream?.getVideoTracks()[0];
+    if (!track) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 960 } },
-      });
-      streamRef.current = stream;
-      setLiveCamera(true);
-    } catch {
-      setCameraError("Could not access camera. Check permissions.");
-    }
+      await track.applyConstraints({ advanced: [{ zoom: value } as ExtConstraintSet] });
+    } catch { /* not supported */ }
+  }
+
+  async function toggleTorch() {
+    const track = webcamRef.current?.stream?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as ExtConstraintSet] });
+      setTorchOn(next);
+    } catch { /* not supported */ }
+  }
+
+  function startCamera() {
+    setCameraError(null);
+    setLiveCamera(true);
   }
 
   function stopCamera() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    webcamRef.current?.stream?.getTracks().forEach((t) => t.stop());
     setLiveCamera(false);
+    setTorchOn(false);
+    setZoom(1);
+    setBrightness(1);
   }
 
   const takeSnapshot = useCallback(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    const video = webcamRef.current?.video;
+    if (!video) return;
 
+    const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    ctx.filter = `brightness(${brightness})`;
     ctx.drawImage(video, 0, 0);
+
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
@@ -87,7 +123,7 @@ export default function PhotoUploader({
       "image/jpeg",
       0.9
     );
-  }, [kind]);
+  }, [kind, brightness]);
 
   async function uploadFile(file: File) {
     const objectUrl = URL.createObjectURL(file);
@@ -138,7 +174,7 @@ export default function PhotoUploader({
 
   return (
     <div className="rounded-lg border border-gray-200 p-3">
-      {/* Hidden elements */}
+      {/* Hidden file input */}
       <input
         ref={galleryInputRef}
         type="file"
@@ -146,7 +182,6 @@ export default function PhotoUploader({
         onChange={handleFileChange}
         className="hidden"
       />
-      <canvas ref={canvasRef} className="hidden" />
 
       {/* Header row */}
       <div className="flex items-center gap-3">
@@ -192,28 +227,101 @@ export default function PhotoUploader({
         </div>
       )}
 
-      {/* Live camera viewfinder */}
+      {/* Live camera viewfinder with controls */}
       {liveCamera && (
-        <div className="relative mt-3 overflow-hidden rounded-lg bg-black">
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="w-full"
-          />
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3">
-            <button
-              onClick={takeSnapshot}
-              className="rounded-full bg-white px-5 py-2 text-sm font-medium text-gray-900 shadow-lg"
-            >
-              Capture
-            </button>
-            <button
-              onClick={stopCamera}
-              className="rounded-full bg-black/50 px-4 py-2 text-sm text-white"
-            >
-              Cancel
-            </button>
+        <div className="mt-3 space-y-2">
+          <div className="relative overflow-hidden rounded-lg bg-black">
+            <Webcam
+              ref={webcamRef}
+              audio={false}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{ facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 960 } }}
+              onUserMedia={handleUserMedia}
+              onUserMediaError={() => {
+                setCameraError("Could not access camera. Check permissions.");
+                setLiveCamera(false);
+              }}
+              style={{ filter: `brightness(${brightness})`, width: "100%", display: "block" }}
+              playsInline
+            />
+
+            {/* Capture / Cancel overlay */}
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3">
+              <button
+                onClick={takeSnapshot}
+                className="rounded-full bg-white px-5 py-2 text-sm font-medium text-gray-900 shadow-lg"
+              >
+                Capture
+              </button>
+              <button
+                onClick={stopCamera}
+                className="rounded-full bg-black/50 px-4 py-2 text-sm text-white"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {/* Torch button (top-right) */}
+            {controls.hasTorch && (
+              <button
+                onClick={toggleTorch}
+                className={`absolute right-2 top-2 rounded-full px-2 py-1 text-lg shadow ${
+                  torchOn ? "bg-yellow-300" : "bg-black/40 text-white"
+                }`}
+                title="Toggle flash"
+              >
+                🔦
+              </button>
+            )}
+          </div>
+
+          {/* Camera controls panel */}
+          <div className="rounded-lg bg-gray-100 px-3 py-2 space-y-2">
+            {/* Brightness */}
+            <div className="flex items-center gap-3">
+              <span className="w-20 text-xs text-gray-500">Brightness</span>
+              <span className="text-sm">🌑</span>
+              <input
+                type="range"
+                min={0.5}
+                max={2}
+                step={0.05}
+                value={brightness}
+                onChange={(e) => setBrightness(Number(e.target.value))}
+                className="flex-1 accent-vault-600"
+              />
+              <span className="text-sm">☀️</span>
+              <button
+                onClick={() => setBrightness(1)}
+                className="text-[10px] text-gray-400 hover:text-gray-600"
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Zoom (hardware) */}
+            {controls.hasZoom && controls.maxZoom > controls.minZoom && (
+              <div className="flex items-center gap-3">
+                <span className="w-20 text-xs text-gray-500">Zoom</span>
+                <span className="text-sm">🔍</span>
+                <input
+                  type="range"
+                  min={controls.minZoom}
+                  max={controls.maxZoom}
+                  step={controls.stepZoom}
+                  value={zoom}
+                  onChange={(e) => applyZoom(Number(e.target.value))}
+                  className="flex-1 accent-vault-600"
+                />
+                <span className="text-xs text-gray-500 w-8 text-right">{zoom.toFixed(1)}×</span>
+                <button
+                  onClick={() => applyZoom(controls.minZoom)}
+                  className="text-[10px] text-gray-400 hover:text-gray-600"
+                >
+                  Reset
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
