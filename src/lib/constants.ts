@@ -13,6 +13,7 @@ export const REGIONS = [
 export const PLATFORMS = [
   "SNES",
   "SFC",
+  "Super Famicom",
   "N64",
   "NES",
   "FC",
@@ -77,6 +78,11 @@ export const COMPLETENESS_OPTIONS: {
     value: "BOX_AND_MANUAL_NO_EXTRAS",
     label: "Box + Manual (no extras)",
     defaults: { cart: true, box: true, manual: true, extras: false },
+  },
+  {
+    value: "BOX_MANUAL_EXTRAS_NO_CART",
+    label: "Box + Manual + Extras (no cartridge)",
+    defaults: { cart: false, box: true, manual: true, extras: true },
   },
   {
     value: "OTHER",

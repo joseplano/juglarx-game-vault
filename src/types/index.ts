@@ -12,6 +12,7 @@ export type ItemCompleteness =
   | "BOX_ONLY"
   | "MANUAL_ONLY"
   | "BOX_AND_MANUAL_NO_EXTRAS"
+  | "BOX_MANUAL_EXTRAS_NO_CART"
   | "OTHER";
 
 export type PhotoKind = "BOX" | "CARTRIDGE" | "MANUAL" | "EXTRAS" | "OTHER";

@@ -7,6 +7,8 @@ import Filters, { type FiltersState, EMPTY_FILTERS } from "@/components/Filters"
 import Pagination from "@/components/Pagination";
 
 const PAGE_SIZE = 12;
+const FILTERS_STORAGE_KEY = "collection-filters";
+const PAGE_STORAGE_KEY = "collection-page";
 
 type ItemWithGame = Item & { game: Game };
 
@@ -14,9 +16,47 @@ interface CollectionListProps {
   initialItems: ItemWithGame[];
 }
 
+function loadStoredFilters(): FiltersState {
+  if (typeof window === "undefined") return EMPTY_FILTERS;
+  try {
+    const raw = sessionStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return EMPTY_FILTERS;
+    const parsed = JSON.parse(raw) as Partial<FiltersState>;
+    return { ...EMPTY_FILTERS, ...parsed };
+  } catch {
+    return EMPTY_FILTERS;
+  }
+}
+
+function loadStoredPage(): number {
+  if (typeof window === "undefined") return 1;
+  const raw = sessionStorage.getItem(PAGE_STORAGE_KEY);
+  const n = raw ? parseInt(raw, 10) : 1;
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 export default function CollectionList({ initialItems }: CollectionListProps) {
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate persisted state after mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    setFilters(loadStoredFilters());
+    setPage(loadStoredPage());
+    setHydrated(true);
+  }, []);
+
+  // Persist filters and page across navigation within the session
+  useEffect(() => {
+    if (!hydrated) return;
+    sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+  }, [filters, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    sessionStorage.setItem(PAGE_STORAGE_KEY, String(page));
+  }, [page, hydrated]);
 
   // Derive unique sagas and genres from the collection
   const sagas = useMemo(() => {
@@ -53,10 +93,10 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
     });
   }, [initialItems, filters]);
 
-  // Reset to page 1 whenever filters change
-  useEffect(() => {
+  function handleFiltersChange(next: FiltersState) {
+    setFilters(next);
     setPage(1);
-  }, [filters]);
+  }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -69,7 +109,7 @@ export default function CollectionList({ initialItems }: CollectionListProps) {
     <div className="space-y-4">
       <Filters
         filters={filters}
-        onChange={setFilters}
+        onChange={handleFiltersChange}
         sagas={sagas}
         genres={genres}
       />
